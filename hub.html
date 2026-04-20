@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Amrit Ocean Resort — Operations Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="/amrit/auth.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #f8f9fa;
+      min-height: 100vh;
+      color: #1F2937;
+    }
+    .hub-header {
+      background: white;
+      border-bottom: 1px solid #e5e7eb;
+      padding: 24px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    .hub-header-logo {
+      height: 64px;
+    }
+    .hub-signout {
+      position: absolute;
+      top: 16px;
+      right: 20px;
+      background: none;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      padding: 4px 12px;
+      font-size: 11px;
+      color: #999;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      transition: all 0.15s;
+    }
+    .hub-signout:hover { color: #1F2937; border-color: #999; }
+    .hub-welcome {
+      text-align: center;
+      padding: 40px 20px 16px;
+    }
+    .hub-welcome h1 {
+      font-size: 22px;
+      font-weight: 700;
+      color: #1F2937;
+      margin-bottom: 6px;
+    }
+    .hub-welcome p {
+      font-size: 14px;
+      color: #888;
+    }
+    .hub-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      max-width: 960px;
+      margin: 32px auto;
+      padding: 0 24px;
+    }
+    .hub-card {
+      background: white;
+      border-radius: 14px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+      padding: 0;
+      text-decoration: none;
+      color: inherit;
+      transition: box-shadow 0.2s, transform 0.15s;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .hub-card:hover {
+      box-shadow: 0 6px 24px rgba(0,0,0,0.1);
+      transform: translateY(-2px);
+    }
+    .hub-card-logo-area {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 28px 20px;
+      min-height: 160px;
+      background: #ffffff;
+    }
+    .hub-card-logo {
+      max-height: 120px;
+      max-width: 90%;
+      object-fit: contain;
+    }
+    .hub-card-info {
+      padding: 16px 24px 24px;
+      text-align: center;
+    }
+    .hub-card-subtitle {
+      font-size: 13px;
+      color: #888;
+      line-height: 1.4;
+    }
+    .hub-footer {
+      text-align: center;
+      padding: 40px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+    .hub-footer-text {
+      font-size: 11px;
+      color: #bbb;
+    }
+    .hub-footer-logo {
+      height: 32px;
+      opacity: 0.4;
+    }
+  </style>
+</head>
+<body>
+  <div class="hub-header">
+    <img src="/amrit/assets/amrit-logo.png" alt="Amrit Ocean Resort" class="hub-header-logo" />
+    <button class="hub-signout" id="signout-btn">Sign out</button>
+  </div>
+
+  <div class="hub-welcome">
+    <h1>Operational Intelligence Suite</h1>
+    <p>Select a tool to get started</p>
+  </div>
+
+  <div class="hub-grid">
+    <a href="/amrit/index.html" class="hub-card">
+      <div class="hub-card-logo-area">
+        <img src="/amrit/assets/stockpot-logo-v3.png" alt="StockPot" class="hub-card-logo" />
+      </div>
+      <div class="hub-card-info">
+        <div class="hub-card-subtitle">F&B Daily P&L</div>
+      </div>
+    </a>
+
+    <a href="/amrit/recognition" class="hub-card">
+      <div class="hub-card-logo-area">
+        <img src="/amrit/assets/the-board-logo.png" alt="The Board" class="hub-card-logo" />
+      </div>
+      <div class="hub-card-info">
+        <div class="hub-card-subtitle">Employee Recognition Tracker</div>
+      </div>
+    </a>
+
+    <a href="/amrit/ops" class="hub-card" id="mep-card">
+      <div class="hub-card-logo-area">
+        <img src="/amrit/assets/mise-en-place-logo.png" alt="Mise en Place" class="hub-card-logo" id="mep-logo" />
+      </div>
+      <div class="hub-card-info">
+        <div class="hub-card-subtitle">SOPs &amp; Checklists</div>
+        <div id="mep-locked-label" style="display:none;font-size:10px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.5px;margin-top:4px;">Access Restricted</div>
+      </div>
+    </a>
+  </div>
+
+  <div class="hub-footer">
+    <span class="hub-footer-text">Powered by</span>
+    <img src="/amrit/assets/broth-group-logo.png" alt="The Broth Group" class="hub-footer-logo" />
+  </div>
+
+  <script>
+    (async function() {
+      var session = await _waitForAuth();
+      if (!session) { window.location.replace('/amrit/login.html'); return; }
+      document.getElementById('signout-btn').addEventListener('click', signOut);
+
+      // Gate Mise en Place card based on platforms.mise_en_place
+      var user = session.user;
+      var meta = (user && user.user_metadata) || {};
+      var platforms = meta.platforms || {};
+      var hasMep = platforms.mise_en_place === true;
+      if (!hasMep) {
+        var card = document.getElementById('mep-card');
+        var logo = document.getElementById('mep-logo');
+        var lbl  = document.getElementById('mep-locked-label');
+        card.removeAttribute('href');
+        card.style.cursor = 'not-allowed';
+        card.style.opacity = '0.45';
+        card.style.filter = 'grayscale(1)';
+        card.style.pointerEvents = 'none';
+        if (lbl) lbl.style.display = 'block';
+      }
+    })();
+  </script>
+</body>
+</html>

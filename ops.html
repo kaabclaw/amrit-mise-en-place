@@ -190,29 +190,79 @@
   /* ==========================================================================
      INDEX / Grid view
      ========================================================================== */
-  .index-hero {
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 24px;
+  .index-hero { margin-bottom: 24px; }
+
+  /* Mode selector */
+  .mode-bar {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
     margin-bottom: 28px;
-    flex-wrap: wrap;
   }
-  .index-hero h1 {
-    font-family: var(--font-display);
-    font-weight: 500;
-    font-size: clamp(28px, 4vw, 40px);
-    letter-spacing: -0.02em;
+  .mode-card {
+    background: #fff;
+    border: 2px solid var(--border);
+    border-radius: 14px;
+    padding: 20px 22px;
+    cursor: pointer;
+    transition: all 0.18s;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    position: relative;
+    overflow: hidden;
+  }
+  .mode-card:hover { border-color: var(--navy); box-shadow: 0 4px 16px rgba(27,42,74,0.10); }
+  .mode-card.active { border-color: var(--navy); background: var(--navy); }
+  .mode-card.active .mode-card-icon { background: rgba(255,255,255,0.15); }
+  .mode-card-icon {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: #f3f4f6;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; margin-bottom: 2px;
+    transition: background 0.18s;
+  }
+  .mode-card-title {
+    font-size: 15px; font-weight: 700;
     color: var(--navy);
-    line-height: 1.1;
+    transition: color 0.18s;
   }
-  .index-hero h1 em { font-style: italic; color: var(--teal); font-weight: 400; }
+  .mode-card.active .mode-card-title { color: #fff; }
+  .mode-card-desc {
+    font-size: 12px; line-height: 1.5;
+    color: var(--ink-subtle);
+    transition: color 0.18s;
+  }
+  .mode-card.active .mode-card-desc { color: rgba(255,255,255,0.75); }
+  .mode-card-badge {
+    position: absolute; top: 14px; right: 14px;
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+    padding: 3px 8px; border-radius: 5px;
+    background: #f3f4f6; color: #6b7280;
+  }
+  .mode-card.active .mode-card-badge { background: rgba(255,255,255,0.2); color: rgba(255,255,255,0.9); }
+  .mode-edit-locked { opacity: 0.45; cursor: not-allowed; }
+  .mode-edit-locked:hover { border-color: var(--border); box-shadow: none; }
+
   .index-hero-sub {
     color: var(--ink-subtle);
-    margin-top: 6px;
-    font-size: 15px;
+    margin-top: 0;
+    font-size: 14px;
+    margin-bottom: 20px;
   }
   .index-hero-sub strong { color: var(--navy); font-weight: 600; }
+
+  /* Edit mode banner */
+  .edit-mode-banner {
+    background: linear-gradient(135deg, #1B2A4A 0%, #243656 100%);
+    color: #fff; border-radius: 12px; padding: 16px 20px;
+    display: flex; align-items: center; gap: 14px;
+    margin-bottom: 20px; font-size: 13px;
+  }
+  .edit-mode-banner strong { font-weight: 700; }
+  .edit-mode-banner a { color: #D4A017; font-weight: 700; text-decoration: none; }
+  .edit-mode-banner a:hover { text-decoration: underline; }
 
   .search-wrap {
     position: relative;
@@ -895,7 +945,8 @@ const state = {
   },
   sort: 'attention',      // 'attention' | 'updated' | 'alpha'
   isPreview: false,
-  currentSop: null
+  currentSop: null,
+  mode: 'learning'        // 'learning' | 'working' | 'edit'
 };
 
 // ---------------------------------------------------------------------------
@@ -1068,24 +1119,62 @@ function renderUserChip() {
 // ---------------------------------------------------------------------------
 // INDEX view
 // ---------------------------------------------------------------------------
+function setMode(mode) {
+  const isAdmin = state.user && state.user.email === 'jerry@kaab.group';
+  if (mode === 'edit' && !isAdmin) return;
+  state.mode = mode;
+  renderIndex();
+}
+
+function renderModeBar() {
+  const isAdmin = state.user && state.user.email === 'jerry@kaab.group';
+  const modes = [
+    {
+      id: 'learning',
+      icon: '📖',
+      title: 'Learning Mode',
+      desc: 'Study SOPs top to bottom. Expanded explanations, full context, and sign-off acknowledgment. Built for onboarding and training.',
+      badge: 'Training'
+    },
+    {
+      id: 'working',
+      icon: '⚡',
+      title: 'Working Mode',
+      desc: 'Shift execution. Key rules front and center, steps you can tick off in real time. No extra content — just what you need to run the floor.',
+      badge: 'On Shift'
+    },
+    {
+      id: 'edit',
+      icon: '✏️',
+      title: 'Edit Mode',
+      desc: 'Admin-only. Create, update, and manage SOPs. Make changes that take effect immediately for all staff.',
+      badge: 'Admin Only',
+      adminOnly: true
+    }
+  ];
+
+  const bar = h('div', { class: 'mode-bar' });
+  modes.forEach(m => {
+    const locked = m.adminOnly && !isAdmin;
+    const active = state.mode === m.id;
+    const card = h('div', {
+      class: `mode-card${active ? ' active' : ''}${locked ? ' mode-edit-locked' : ''}`,
+      onclick: locked ? null : () => setMode(m.id)
+    },
+      h('div', { class: 'mode-card-icon' }, m.icon),
+      h('div', { class: 'mode-card-title' }, m.title),
+      h('div', { class: 'mode-card-desc' }, m.desc),
+      h('div', { class: 'mode-card-badge' }, locked ? '🔒 Admin Only' : m.badge)
+    );
+    bar.appendChild(card);
+  });
+  return bar;
+}
+
 function renderIndex() {
   const app = $('#app');
   app.innerHTML = '';
   $('#preview-banner').style.display = 'none';
-
-  // Hero
-  const total = state.allSops.length;
-  const unsignedCount = state.allSops.filter(s => needsAttention(s)).length;
-
-  const heroSub = h('div', { class: 'index-hero-sub' });
-  heroSub.innerHTML = `<strong>${total}</strong> documents · <strong>${unsignedCount}</strong> need your attention`;
-
-  const hero = h('div', { class: 'index-hero' },
-    h('div', {},
-      h('h1', { html: 'Everything you need<br><em>to run the shift.</em>' }),
-      heroSub
-    )
-  );
 
   // Mount search into header filter bar
   const hfb = document.getElementById('header-filter-bar');
@@ -1095,6 +1184,25 @@ function renderIndex() {
     hss.appendChild(renderSearchBox());
     hfb.style.display = 'flex';
   }
+
+  // Stats sub-line
+  const total = state.allSops.length;
+  const unsignedCount = state.allSops.filter(s => needsAttention(s)).length;
+  const heroSub = h('div', { class: 'index-hero-sub' });
+  heroSub.innerHTML = `<strong>${total}</strong> documents · <strong>${unsignedCount}</strong> need your attention`;
+
+  // Mode selector
+  const modeBar = renderModeBar();
+
+  // Edit mode banner
+  let editBanner = null;
+  if (state.mode === 'edit') {
+    editBanner = h('div', { class: 'edit-mode-banner' });
+    editBanner.innerHTML = `<span style="font-size:22px;">✏️</span><div><strong>Edit Mode active.</strong> You can manage SOPs from the <a href="/amrit/ops-admin.html">Admin Panel</a>, or click Edit on any document below to open it directly.</div>`;
+  }
+
+  const hero = h('div', { class: 'index-hero' }, heroSub, modeBar);
+  if (editBanner) hero.appendChild(editBanner);
 
   // Filters
   const filters = renderFilters();
@@ -1122,10 +1230,15 @@ function renderIndex() {
     )
   );
 
-  // Grid
-  const sorted = sortResults(filtered);
+  // Grid — in working mode show only published SOPs sorted for speed
+  let sopList = state.allSops;
+  if (state.mode === 'working') {
+    sopList = sopList.filter(s => s.published !== false);
+  }
+
+  const sorted = sortResults(applyFilters(sopList));
   const grid = sorted.length > 0
-    ? h('div', { class: 'grid' }, ...sorted.map(renderCard))
+    ? h('div', { class: 'grid' }, ...sorted.map(s => renderCard(s)))
     : h('div', { class: 'empty' },
         h('div', { class: 'empty-title' }, 'No matches'),
         h('div', {}, 'Try clearing filters or adjusting your search.')
@@ -1293,10 +1406,19 @@ function renderCard(sop) {
     ? `${sop.step_count} step${sop.step_count !== 1 ? 's' : ''}`
     : (sop.rules_count > 0 ? `${sop.rules_count} rule${sop.rules_count !== 1 ? 's' : ''}` : 'Read & acknowledge');
 
-  const footer = h('div', { class: 'card-footer' },
+  const footerChildren = [
     h('span', {}, footerText),
     h('span', {}, 'Updated ' + formatDate(sop.updated_at))
-  );
+  ];
+  if (state.mode === 'edit' && state.user && state.user.email === 'jerry@kaab.group') {
+    const editBtn = h('a', {
+      href: '/amrit/ops-admin.html',
+      style: 'font-size:11px;font-weight:700;color:#1B2A4A;text-decoration:none;padding:3px 10px;border:1.5px solid #1B2A4A;border-radius:6px;white-space:nowrap;',
+      onclick: (e) => { e.stopPropagation(); window.location.href = '/amrit/ops-admin.html'; }
+    }, '✏ Edit');
+    footerChildren.push(editBtn);
+  }
+  const footer = h('div', { class: 'card-footer' }, ...footerChildren);
 
   card.append(top, title, meta, footer);
   return card;
@@ -1372,6 +1494,13 @@ async function renderDetail(slug) {
 
 function renderDetailContent(sop, progress) {
   const wrap = h('div', { class: 'detail' });
+  const mode = state.mode || 'learning';
+
+  // Mode indicator badge
+  const modeColors = { learning: '#1B2A4A', working: '#059669', edit: '#d97706' };
+  const modeLabels = { learning: '📖 Learning Mode', working: '⚡ Working Mode', edit: '✏️ Edit Mode' };
+  const modeBadge = h('div', { style: `display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:${modeColors[mode]};background:${modeColors[mode]}18;padding:4px 12px;border-radius:6px;margin-bottom:16px;` }, modeLabels[mode]);
+  wrap.append(modeBadge);
 
   // Breadcrumb
   const crumb = h('div', { class: 'breadcrumb' });
@@ -1415,11 +1544,18 @@ function renderDetailContent(sop, progress) {
     wrap.append(rb);
   }
 
+  // Working mode — show a quick-reference note if SOP (no steps)
+  if (mode === 'working' && sop.type === 'SOP') {
+    const note = h('div', { style: 'background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px 18px;font-size:13px;color:#065f46;margin-bottom:16px;' });
+    note.innerHTML = '<strong>⚡ Working Mode:</strong> Key rules shown above. Full procedure available in Learning Mode.';
+    wrap.append(note);
+  }
+
   // Checklist or Sections
   if (sop.type === 'Checklist' && Array.isArray(sop.steps) && sop.steps.length > 0) {
     wrap.append(renderChecklist(sop, progress));
-  } else {
-    // Narrative sections
+  } else if (mode !== 'working') {
+    // Narrative sections — full content only in Learning & Edit modes
     const sections = Array.isArray(sop.sections) ? sop.sections : [];
     if (sections.length > 0) {
       for (const sec of sections) {
